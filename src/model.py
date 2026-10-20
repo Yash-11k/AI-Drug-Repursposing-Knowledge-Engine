@@ -7,6 +7,7 @@ class HeteroGraphSAGE(torch.nn.Module):
     def __init__(self, metadata, hidden_channels, out_channels):
         super().__init__()
         
+        # HeteroConv har ek metaedge ke liye independent GraphSAGE convolution banata hai
         self.conv1 = HeteroConv({
             edge_type: SAGEConv((-1, -1), hidden_channels)
             for edge_type in metadata[1]
@@ -18,28 +19,48 @@ class HeteroGraphSAGE(torch.nn.Module):
         }, aggr='sum')
 
     def forward(self, x_dict, edge_index_dict):
+        # Pehla GNN layer + ReLU activation
         x_dict = self.conv1(x_dict, edge_index_dict)
         x_dict = {key: x.relu() for key, x in x_dict.items()}
+        
+        # Dusra GNN layer (final embeddings ke liye)
         x_dict = self.conv2(x_dict, edge_index_dict)
         return x_dict
+
+class LinkPredictor(torch.nn.Module):
+    """
+    Decoder module jo source aur target node embeddings ka dot-product 
+    karke edge existence score predict karta hai.
+    """
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, z_dict, edge_index, src_type='entity', tgt_type='entity'):
+        row, col = edge_index
+        z_src = z_dict[src_type][row]
+        z_tgt = z_dict[tgt_type][col]
+        # Dot product score for each edge pair
+        return (z_src * z_tgt).sum(dim=-1)
 
 if __name__ == "__main__":
     processed_path = "data/processed_graph.pt"
     if os.path.exists(processed_path):
-        print("Loading cached graph for model test...")
-        # weights_only=False yahan add kiya gaya hai
+        print("Loading cached graph for model and predictor test...")
         graph = torch.load(processed_path, weights_only=False)
         
-        # Model initialize karna
+        # Initialize model & predictor
         model = HeteroGraphSAGE(metadata=graph.metadata(), hidden_channels=32, out_channels=16)
-        print("Model initialized successfully!")
+        predictor = LinkPredictor()
+        print("Model and LinkPredictor initialized successfully!")
         
-        # Forward pass test
         model.eval()
         with torch.no_grad():
             out_dict = model(graph.x_dict, graph.edge_index_dict)
+            # Test link predictor with a sample edge index
+            sample_edges = graph['entity', 'CpD', 'entity'].edge_index[:, :5]
+            scores = predictor(out_dict, sample_edges)
             
-        print("Forward pass successful!")
-        print("Output embeddings shape for entity:", out_dict['entity'].shape)
+        print("Forward pass and Link Prediction test successful!")
+        print("Sample edge prediction scores shape:", scores.shape)
     else:
-        print("Processed graph not found! Pehle graph_builder.py run karein.")
+        print("Processed graph not found!")
