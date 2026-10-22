@@ -1,4 +1,5 @@
 import os
+import argparse
 import torch
 import torch.nn as nn
 from torch_geometric.nn import SAGEConv, HeteroConv
@@ -40,14 +41,26 @@ class LinkPredictor(torch.nn.Module):
         return (z_src * z_tgt).sum(dim=-1)
 
 if __name__ == "__main__":
+    # Command-line arguments for hyperparameter & hidden dimensions tuning
+    parser = argparse.ArgumentParser(description="Tune Hidden Dimensions for GraphRx GNN")
+    parser.add_argument("--hidden_dim", type=int, default=64, help="Hidden channel dimension size")
+    parser.add_argument("--out_dim", type=int, default=32, help="Output embedding dimension size")
+    parser.add_argument("--dropout", type=float, default=0.1, help="Dropout probability")
+    args = parser.parse_args()
+
     processed_path = "data/processed_graph.pt"
     if os.path.exists(processed_path):
-        print("Loading cached graph for model test with dropout...")
+        print(f"Loading cached graph for tuning test (hidden_dim={args.hidden_dim}, out_dim={args.out_dim})...")
         graph = torch.load(processed_path, weights_only=False)
         
-        model = HeteroGraphSAGE(metadata=graph.metadata(), hidden_channels=32, out_channels=16, dropout=0.2)
+        model = HeteroGraphSAGE(
+            metadata=graph.metadata(), 
+            hidden_channels=args.hidden_dim, 
+            out_channels=args.out_dim, 
+            dropout=args.dropout
+        )
         predictor = LinkPredictor()
-        print("Model with Dropout and LinkPredictor initialized successfully!")
+        print("Model initialized with tuned dimensions successfully!")
         
         model.eval()
         with torch.no_grad():
@@ -55,7 +68,8 @@ if __name__ == "__main__":
             sample_edges = graph['entity', 'CpD', 'entity'].edge_index[:, :5]
             scores = predictor(out_dict, sample_edges)
             
-        print("Forward pass with Dropout successful!")
+        print("Forward pass successful with tuned dimensions!")
+        print(f"Output embedding shape for entity: {out_dict['entity'].shape}")
         print("Sample scores shape:", scores.shape)
     else:
         print("Processed graph not found!")
