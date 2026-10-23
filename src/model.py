@@ -8,10 +8,14 @@ class HeteroGraphSAGE(torch.nn.Module):
     def __init__(self, metadata, hidden_channels, out_channels, dropout=0.1):
         super().__init__()
         
+        # HeteroConv layers
         self.conv1 = HeteroConv({
             edge_type: SAGEConv((-1, -1), hidden_channels)
             for edge_type in metadata[1]
         }, aggr='sum')
+        
+        # Batch Normalization for hidden channels
+        self.bn1 = nn.BatchNorm1d(hidden_channels)
         
         self.conv2 = HeteroConv({
             edge_type: SAGEConv((-1, -1), out_channels)
@@ -22,9 +26,9 @@ class HeteroGraphSAGE(torch.nn.Module):
         self.dropout = nn.Dropout(p=dropout)
 
     def forward(self, x_dict, edge_index_dict):
-        # Pehla GNN layer + ReLU + Dropout
+        # Pehla GNN layer -> BatchNorm -> ReLU -> Dropout
         x_dict = self.conv1(x_dict, edge_index_dict)
-        x_dict = {key: self.dropout(x.relu()) for key, x in x_dict.items()}
+        x_dict = {key: self.dropout(torch.relu(self.bn1(x))) for key, x in x_dict.items()}
         
         # Dusra GNN layer (final embeddings ke liye)
         x_dict = self.conv2(x_dict, edge_index_dict)
@@ -41,8 +45,7 @@ class LinkPredictor(torch.nn.Module):
         return (z_src * z_tgt).sum(dim=-1)
 
 if __name__ == "__main__":
-    # Command-line arguments for hyperparameter & hidden dimensions tuning
-    parser = argparse.ArgumentParser(description="Tune Hidden Dimensions for GraphRx GNN")
+    parser = argparse.ArgumentParser(description="Tune GraphRx GNN with BatchNorm")
     parser.add_argument("--hidden_dim", type=int, default=64, help="Hidden channel dimension size")
     parser.add_argument("--out_dim", type=int, default=32, help="Output embedding dimension size")
     parser.add_argument("--dropout", type=float, default=0.1, help="Dropout probability")
@@ -50,7 +53,7 @@ if __name__ == "__main__":
 
     processed_path = "data/processed_graph.pt"
     if os.path.exists(processed_path):
-        print(f"Loading cached graph for tuning test (hidden_dim={args.hidden_dim}, out_dim={args.out_dim})...")
+        print(f"Loading cached graph for BatchNorm test (hidden_dim={args.hidden_dim}, out_dim={args.out_dim})...")
         graph = torch.load(processed_path, weights_only=False)
         
         model = HeteroGraphSAGE(
@@ -60,7 +63,7 @@ if __name__ == "__main__":
             dropout=args.dropout
         )
         predictor = LinkPredictor()
-        print("Model initialized with tuned dimensions successfully!")
+        print("Model initialized with BatchNorm, ReLU, and Dropout successfully!")
         
         model.eval()
         with torch.no_grad():
@@ -68,7 +71,7 @@ if __name__ == "__main__":
             sample_edges = graph['entity', 'CpD', 'entity'].edge_index[:, :5]
             scores = predictor(out_dict, sample_edges)
             
-        print("Forward pass successful with tuned dimensions!")
+        print("Forward pass successful with BatchNorm!")
         print(f"Output embedding shape for entity: {out_dict['entity'].shape}")
         print("Sample scores shape:", scores.shape)
     else:
