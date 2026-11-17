@@ -13,6 +13,16 @@
   <img src="https://img.shields.io/badge/License-MIT-green.svg" />
 </p>
 
+<p align="center">
+  <a href="https://ai-drug-repursposing-knowledge-engine.streamlit.app/">
+    <b>🚀 LAUNCH LIVE APPLICATION</b>
+  </a>
+  &nbsp; | &nbsp;
+  <a href="https://github.com/Yash-11k/AI-Drug-Repursposing-Knowledge-Engine">
+    <b>💻 GITHUB REPOSITORY</b>
+  </a>
+</p>
+
 ---
 
 ## 📖 Table of Contents
@@ -28,6 +38,7 @@
 9. [How It Works](#-how-it-works)
 10. [Medical Disclaimer](#-medical-disclaimer)
 11. [License](#-license)
+12. [Author](#-author)
 
 ---
 
@@ -147,8 +158,6 @@ Model weights are saved in `models/best_gnn.pt`.
 **File:** `src/explain.py`
 
 **Objective:** Make predictions interpretable by identifying the features and biological relationships influencing model decisions.
-
-**Implementation:**
 
 **1. NetworkX Metapath Traversal**
 - Finds biological paths connecting candidate drugs and diseases.
@@ -379,10 +388,11 @@ This project is licensed under the **MIT License**.
 
 ## 👨‍💻 Author
 
-**Yash **
+**Yash**
 
-- GitHub: [Yash-11k](https://github.com/Yash-11k)
-- Portfolio: [Personal Portfolio](https://yash-portfolio-web-mu.vercel.app/)
+- 🌐 Portfolio: [Personal Portfolio](https://yash-portfolio-web-mu.vercel.app/)
+- 💻 GitHub: [Yash-11k](https://github.com/Yash-11k)
+- 🚀 Live Demo: [GraphRx – Drug Repurposing Engine](https://ai-drug-repursposing-knowledge-engine.streamlit.app/)
 
 ---
 
